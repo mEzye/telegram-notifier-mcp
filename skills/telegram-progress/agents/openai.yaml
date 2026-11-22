@@ -1,0 +1,6 @@
+interface:
+  display_name: "Telegram Progress"
+  short_description: "Сповіщення про роботу всіх залучених агентів"
+  default_prompt: "Увімкни $telegram-progress для цієї задачі та всіх залучених агентів."
+policy:
+  allow_implicit_invocation: false

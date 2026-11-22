@@ -12,17 +12,20 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "test": "node --test local/chat-commands.test.mjs local/reply-handler.test.mjs local/reply-receipts.test.mjs",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "zod": "^3.24.2"
+    "proper-lockfile": "^4.1.2",
+    "ws": "^8.23.0",
+    "zod": "^4.6.7"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AdeshAtole/telegram-notifier-mcp.git"
+    "url": "git+https://github.com/mEzye/telegram-notifier-mcp.git"
   },
-  "homepage": "https://github.com/AdeshAtole/telegram-notifier-mcp#readme",
+  "homepage": "https://github.com/mEzye/telegram-notifier-mcp#readme",
   "keywords": [
     "mcp",
     "telegram",
@@ -32,7 +35,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.7.3",
-    "@types/node": "^22.13.4"
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3"
   }
 }

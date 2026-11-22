@@ -6,6 +6,8 @@ import { z } from "zod";
 import { readFile, writeFile, stat, mkdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { homedir } from "node:os";
+import { saveRoute } from "./reply-routing.js";
+import { acknowledgeReply } from "./reply-receipts.js";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -297,6 +299,39 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+
+const routingFields = {
+  agentThreadId: z.string().regex(/^[0-9a-f-]{36}$/i).optional()
+    .describe("Your own CODEX_THREAD_ID. Binds this message to your agent so a Telegram Reply can resume it."),
+};
+async function routedResult(res: TelegramResponse, successMsg: string, chatId: string, threadId: string | undefined, text: string) {
+  if (!res.ok) return telegramResult(res, successMsg);
+  const message = res.result as {message_id?: number} | undefined;
+  if (threadId && message?.message_id) {
+    try { await saveRoute(chatId, message.message_id, threadId, text); }
+    catch { return successResult(successMsg + " WARNING: delivery succeeded but reply routing could not be saved. Do not resend automatically."); }
+  }
+  return successResult(successMsg + (message?.message_id ? ` Message ID: ${message.message_id}.` : '') + (threadId ? ' Replies are routed to your agent.' : ' No agent route supplied.'));
+}
+
+server.tool(
+  "acknowledge_reply",
+  "Mark this agent's Telegram Reply processing started or completed. The router sets eyes on accepted delivery; completed replaces it with thumbs up.",
+  {
+    telegramMessageId: z.number().int().positive(),
+    agentThreadId: z.string().regex(/^[0-9a-f-]{36}$/i),
+    stage: z.enum(["started", "completed"]),
+    replyToMessageId: z.number().int().positive().optional().describe("Original bot message ID; needed only for replies received before receipt support was installed"),
+  },
+  async ({telegramMessageId, agentThreadId, stage, replyToMessageId}) => {
+    if (!DEFAULT_CHAT_ID) return errorResult("No default chat configured");
+    try {
+      const actualStage = await acknowledgeReply(TELEGRAM_BOT_TOKEN!, DEFAULT_CHAT_ID, telegramMessageId, agentThreadId, stage, replyToMessageId);
+      return successResult(`Reply ${telegramMessageId}: ${actualStage}.`);
+    } catch (error) { return errorResult(error instanceof Error ? error.message : "Unable to acknowledge reply"); }
+  },
+);
+
 // -- send_message -----------------------------------------------------------
 
 server.tool(
@@ -304,6 +339,7 @@ server.tool(
   "Send a text message to a Telegram chat",
   {
     text: z.string().describe("The message text to send"),
+    ...routingFields,
     chatId: z
       .string()
       .optional()
@@ -317,7 +353,7 @@ server.tool(
       .optional()
       .describe("Send silently without notification sound"),
   },
-  async ({ text, chatId, parseMode, disableNotification }) => {
+  async ({ text, chatId, parseMode, disableNotification, agentThreadId }) => {
     const resolvedChatId = resolveChatId(chatId);
     if (!resolvedChatId) {
       return errorResult(
@@ -326,7 +362,7 @@ server.tool(
     }
 
     const res = await sendMessage(resolvedChatId, text, parseMode, disableNotification);
-    return telegramResult(res, `Message sent to chat ${resolvedChatId}.`);
+    return routedResult(res, `Message sent to chat ${resolvedChatId}.`, resolvedChatId, agentThreadId, text);
   },
 );
 
@@ -336,6 +372,7 @@ server.tool(
   "send_document",
   "Send a file/document to a Telegram chat",
   {
+    ...routingFields,
     filePath: z.string().describe("Absolute path to the file to send"),
     chatId: z
       .string()
@@ -351,7 +388,7 @@ server.tool(
       .optional()
       .describe("Send silently without notification sound"),
   },
-  async ({ filePath, chatId, caption, parseMode, disableNotification }) => {
+  async ({ filePath, chatId, caption, parseMode, disableNotification, agentThreadId }) => {
     const resolvedChatId = resolveChatId(chatId);
     if (!resolvedChatId) {
       return errorResult(
@@ -367,7 +404,7 @@ server.tool(
       parseMode,
       disableNotification,
     );
-    return telegramResult(res, `Document sent to chat ${resolvedChatId}.`);
+    return routedResult(res, `Document sent to chat ${resolvedChatId}.`, resolvedChatId, agentThreadId, caption ?? '[Document]');
   },
 );
 
@@ -377,6 +414,7 @@ server.tool(
   "send_photo",
   "Send a photo/image to a Telegram chat",
   {
+    ...routingFields,
     filePath: z.string().describe("Absolute path to the image file to send"),
     chatId: z
       .string()
@@ -392,7 +430,7 @@ server.tool(
       .optional()
       .describe("Send silently without notification sound"),
   },
-  async ({ filePath, chatId, caption, parseMode, disableNotification }) => {
+  async ({ filePath, chatId, caption, parseMode, disableNotification, agentThreadId }) => {
     const resolvedChatId = resolveChatId(chatId);
     if (!resolvedChatId) {
       return errorResult(
@@ -408,7 +446,7 @@ server.tool(
       parseMode,
       disableNotification,
     );
-    return telegramResult(res, `Photo sent to chat ${resolvedChatId}.`);
+    return routedResult(res, `Photo sent to chat ${resolvedChatId}.`, resolvedChatId, agentThreadId, caption ?? '[Photo]');
   },
 );
 
@@ -418,6 +456,7 @@ server.tool(
   "send_video",
   "Send a video to a Telegram chat",
   {
+    ...routingFields,
     filePath: z.string().describe("Absolute path to the video file to send"),
     chatId: z
       .string()
@@ -433,7 +472,7 @@ server.tool(
       .optional()
       .describe("Send silently without notification sound"),
   },
-  async ({ filePath, chatId, caption, parseMode, disableNotification }) => {
+  async ({ filePath, chatId, caption, parseMode, disableNotification, agentThreadId }) => {
     const resolvedChatId = resolveChatId(chatId);
     if (!resolvedChatId) {
       return errorResult(
@@ -449,7 +488,7 @@ server.tool(
       parseMode,
       disableNotification,
     );
-    return telegramResult(res, `Video sent to chat ${resolvedChatId}.`);
+    return routedResult(res, `Video sent to chat ${resolvedChatId}.`, resolvedChatId, agentThreadId, caption ?? '[Video]');
   },
 );
 
@@ -459,6 +498,7 @@ server.tool(
   "send_audio",
   "Send an audio file to a Telegram chat",
   {
+    ...routingFields,
     filePath: z.string().describe("Absolute path to the audio file to send"),
     chatId: z
       .string()
@@ -474,7 +514,7 @@ server.tool(
       .optional()
       .describe("Send silently without notification sound"),
   },
-  async ({ filePath, chatId, caption, parseMode, disableNotification }) => {
+  async ({ filePath, chatId, caption, parseMode, disableNotification, agentThreadId }) => {
     const resolvedChatId = resolveChatId(chatId);
     if (!resolvedChatId) {
       return errorResult(
@@ -490,7 +530,7 @@ server.tool(
       parseMode,
       disableNotification,
     );
-    return telegramResult(res, `Audio sent to chat ${resolvedChatId}.`);
+    return routedResult(res, `Audio sent to chat ${resolvedChatId}.`, resolvedChatId, agentThreadId, caption ?? '[Audio]');
   },
 );
 
@@ -516,6 +556,7 @@ server.tool(
       .describe("Long-polling timeout in seconds (0-30, default 0). Set >0 to wait for new messages."),
   },
   async ({ limit, timeout }) => {
+    if (process.env.TELEGRAM_REPLY_ROUTER === "1") return errorResult("Incoming updates are owned by the Telegram reply router. Do not poll from agents.");
     const effectiveLimit = limit ?? 10;
     const effectiveTimeout = timeout ?? 0;
 

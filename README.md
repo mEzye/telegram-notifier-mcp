@@ -1,4 +1,41 @@
-# Telegram Notifier MCP Server
+# Telegram Notifier MCP — Codex fork
+
+This is [mEzye's fork](https://github.com/mEzye/telegram-notifier-mcp) of
+[AdeshAtole/telegram-notifier-mcp](https://github.com/AdeshAtole/telegram-notifier-mcp),
+with a Windows bridge for local Codex agents. The original MIT license is retained.
+
+The fork adds:
+
+- Per-message bindings to individual Codex threads, including subagents.
+- Telegram Replies delivered with both the owner's request and the quoted original message.
+- One background inbox receiver shared by all agents, with duplicate-update protection.
+- 👀 when Codex accepts a request into its queue, and 👍 when the receiving agent completes it.
+- `/new` with `D:/Assistant` as the default directory, optional custom directories, `/archive`, and `/help`.
+- Windows DPAPI credential loading and a windowless receiver supervisor.
+- An explicitly invoked [telegram-progress skill](skills/telegram-progress/SKILL.md) with activation handoffs to participating agents.
+
+## Install this fork from source
+
+```sh
+git clone https://github.com/mEzye/telegram-notifier-mcp.git
+cd telegram-notifier-mcp
+npm ci
+npm run build
+npm test
+```
+
+The currently installed Windows bridge and its required paths are documented in
+[local/INSTALLATION.md](local/INSTALLATION.md). This is a source checkout with a
+machine-specific setup: adjust the documented paths for a different computer.
+Credentials, chat state, downloaded media, and runtime logs are stored outside the repository.
+Running the unit tests does not send Telegram messages or start model turns.
+
+The upstream instructions below describe the base MCP package. The original npm
+package does not include this fork's Codex bridge or Telegram chat commands.
+
+---
+
+# Upstream Telegram Notifier MCP Server
 
 An [MCP](https://modelcontextprotocol.io/) server that lets an LLM send messages and files to a user via a Telegram bot, and read incoming messages. No external HTTP or Telegram libraries — just the native `fetch` API and the official MCP SDK.
 
