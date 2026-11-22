@@ -1,275 +1,204 @@
-# Telegram Notifier MCP — Codex fork
+# Telegram Notifier MCP — Codex bridge
 
-This is [mEzye's fork](https://github.com/mEzye/telegram-notifier-mcp) of
-[AdeshAtole/telegram-notifier-mcp](https://github.com/AdeshAtole/telegram-notifier-mcp),
-with a Windows bridge for local Codex agents. The original MIT license is retained.
+Форк [AdeshAtole/telegram-notifier-mcp](https://github.com/AdeshAtole/telegram-notifier-mcp)
+від [mEzye](https://github.com/mEzye): Telegram-бот для спілкування з локальними
+агентами Codex на Windows.
 
-The fork adds:
+Агенти надсилають повідомлення та результати роботи в Telegram. Власник відповідає
+через **Reply**, а приймач передає запит саме тому треду Codex, який надіслав
+оригінальне повідомлення.
 
-- Per-message bindings to individual Codex threads, including subagents.
-- Telegram Replies delivered with both the owner's request and the quoted original message.
-- One background inbox receiver shared by all agents, with duplicate-update protection.
-- 👀 when Codex accepts a request into its queue, and 👍 when the receiving agent completes it.
-- `/new` with `D:/Assistant` as the default directory, optional custom directories, `/archive`, and `/help`.
-- Windows DPAPI credential loading and a windowless receiver supervisor.
-- An explicitly invoked [telegram-progress skill](skills/telegram-progress/SKILL.md) with activation handoffs to participating agents.
+## Можливості
 
-## Install this fork from source
+- Текст, посилання, фрагменти коду, документи, фото, відео та аудіофайли.
+- Прив’язка кожного вихідного повідомлення до конкретного агента через `agentThreadId`.
+- Передавання в Codex нового тексту власника разом із повідомленням, на яке він відповів.
+- Робота з кількома основними агентами та субагентами; адресація за ID треду.
+- Один фоновий приймач для всіх агентів, журнал оброблених updates і захист від повторного запуску запиту.
+- Створення та архівація чатів командами Telegram.
+- Реакції зі статусом запиту замість окремих повідомлень про успішне передавання.
+- Завантаження токена з Windows DPAPI та фоновий запуск без консольного вікна.
+- Окремий скіл [telegram-progress](skills/telegram-progress/SKILL.md), який вмикається за викликом.
 
-```sh
-git clone https://github.com/mEzye/telegram-notifier-mcp.git
-cd telegram-notifier-mcp
+## Як користуватися
+
+1. Увімкни `$telegram-progress` у потрібному треді Codex.
+2. Агент надішле повідомлення зі своїм підписом, наприклад `[Реворд]`.
+3. Натисни **«Відповісти»** на цьому повідомленні та напиши запит.
+4. Приймач додасть запит до черги відповідного треду. Зайнятий агент обробить його після поточної роботи.
+
+Координатор передає активацію скілу новим та вже залученим субагентам. Кожен агент
+використовує власний однослівний підпис і власний `CODEX_THREAD_ID`.
+Незалежні треди вмикають скіл окремо.
+
+### Команди Telegram
+
+| Команда | Результат |
+|---|---|
+| `/new` | Новий порожній чат у `D:/Assistant`. |
+| `/new D:/Projects/MyApp` | Новий чат у вказаній існуючій папці. |
+| `/new "D:/My Project"` | Те саме для шляху з пробілами. |
+| `/archive` через Reply | Архівує чат, прив’язаний до вибраного повідомлення агента. |
+| `/archive UUID` | Архівує чат за явно вказаним ID. |
+| `/help` | Показує команди та приклади. |
+
+Після `/new` бот надсилає повідомлення нового чату з папкою та ID. Перше завдання
+надішли через Reply на це повідомлення. Історія попереднього треду не копіюється.
+
+Папки не створюються автоматично. Команда `/archive` без Reply або ID попросить
+вказати чат. Архівація зберігає історію; звичайна відповідь на повідомлення
+архівованого через бота чату не відкриває його повторно.
+
+### Реакції
+
+| Реакція | Значення |
+|---|---|
+| 👀 | Codex прийняв повідомлення до черги потрібного треду. |
+| 👍 | Агент завершив обробку запиту та підтвердив завершення. |
+
+👀 ставить сам приймач після успішного передавання в чергу, без очікування відповіді
+моделі. Це не гарантія, що агент уже працює над запитом.
+👍 ставить агент після завершення. Ці реакції незалежні від звичайних галочок
+«прочитано» в Telegram.
+
+## Вимоги та встановлення
+
+Поточна інтеграція розрахована на **Windows**. Потрібні Node.js, PowerShell,
+Python із `pythonw.exe` для запускальника та авторизований Codex CLI з локальним
+app server. Перевірена конфігурація використовує Node.js 24 і Python 3.11.
+
+```powershell
+git clone https://github.com/mEzye/telegram-notifier-mcp.git D:/Assistant/telegram-notifier-mcp
+cd D:/Assistant/telegram-notifier-mcp
 npm ci
 npm run build
 npm test
 ```
 
-The currently installed Windows bridge and its required paths are documented in
-[local/INSTALLATION.md](local/INSTALLATION.md). This is a source checkout with a
-machine-specific setup: adjust the documented paths for a different computer.
-Credentials, chat state, downloaded media, and runtime logs are stored outside the repository.
-Running the unit tests does not send Telegram messages or start model turns.
+Ці команди збирають код. Налаштування бота, MCP і фонового запуску виконується окремо.
+У поточних скриптах зафіксовані шляхи цієї інсталяції; на іншому комп’ютері їх
+потрібно адаптувати. Точні шляхи та завдання Windows описані в
+[local/INSTALLATION.md](local/INSTALLATION.md).
 
-The upstream instructions below describe the base MCP package. The original npm
-package does not include this fork's Codex bridge or Telegram chat commands.
+### Telegram-бот і локальні налаштування
 
----
+Створи бота через [@BotFather](https://t.me/BotFather), надішли йому `/start`
+і визнач ID свого приватного чату до запуску фонового приймача.
 
-# Upstream Telegram Notifier MCP Server
+Локальний запускальник читає два файли з `%USERPROFILE%/.telegram-notifier-mcp/`:
 
-An [MCP](https://modelcontextprotocol.io/) server that lets an LLM send messages and files to a user via a Telegram bot, and read incoming messages. No external HTTP or Telegram libraries — just the native `fetch` API and the official MCP SDK.
-
-## Quick Start
-
-No cloning or building required — just add the config to your MCP client.
-
-### 1. Create a Telegram Bot
-
-1. Open Telegram and message [@BotFather](https://t.me/BotFather)
-2. Send `/newbot` and follow the prompts to name your bot
-3. Copy the **bot token** you receive (e.g., `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`)
-
-### 2. Find Your Chat ID
-
-1. Send any message to your new bot on Telegram
-2. Open the following URL in your browser, replacing `YOUR_BOT_TOKEN` with your actual token:
-   ```
-   https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates
-   ```
-3. In the JSON response, find `"chat":{"id": 123456789}` — that number is your chat ID
-
-> **Tip:** For group chats, add the bot to the group, send a message, and check the same URL. Group chat IDs are negative numbers (e.g., `-1001234567890`).
-
-### 3. Add to Your MCP Client
-
-#### Claude Desktop
-
-Add this to your Claude Desktop config file:
-
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "telegram-notifier": {
-      "command": "npx",
-      "args": ["telegram-notifier-mcp"],
-      "env": {
-        "TELEGRAM_BOT_TOKEN": "your-bot-token-here",
-        "TELEGRAM_CHAT_ID": "your-chat-id-here"
-      }
-    }
-  }
-}
-```
-
-#### Claude Code
-
-Add to your project's `.mcp.json` or `~/.claude.json`:
-
-```json
-{
-  "mcpServers": {
-    "telegram-notifier": {
-      "command": "npx",
-      "args": ["telegram-notifier-mcp"],
-      "env": {
-        "TELEGRAM_BOT_TOKEN": "your-bot-token-here",
-        "TELEGRAM_CHAT_ID": "your-chat-id-here"
-      }
-    }
-  }
-}
-```
-
-#### Codex CLI
-
-You can configure Codex CLI in either of these ways:
-
-**Option A: Add it manually in `~/.codex/config.toml`**
-
-```toml
-[mcp_servers.telegram-notifier]
-command = "npx"
-args = ["telegram-notifier-mcp"]
-
-[mcp_servers.telegram-notifier.env]
-TELEGRAM_BOT_TOKEN = "your-bot-token-here"
-TELEGRAM_CHAT_ID = "your-chat-id-here"
-```
-
-**Option B: Add it with a CLI command**
-
-```bash
-codex mcp add telegram-notifier \
-  --env TELEGRAM_BOT_TOKEN=your-bot-token-here \
-  --env TELEGRAM_CHAT_ID=your-chat-id-here \
-  -- npx telegram-notifier-mcp
-```
-
-That's it — your LLM can now send you Telegram notifications.
-
-## Configuration
-
-The server uses two environment variables:
-
-| Variable | Required | Description |
-|---|---|---|
-| `TELEGRAM_BOT_TOKEN` | Yes | Bot token from @BotFather |
-| `TELEGRAM_CHAT_ID` | No | Default chat ID. Can be overridden per-tool call via the `chatId` parameter. |
-
-The server will exit with an error if `TELEGRAM_BOT_TOKEN` is not set. If `TELEGRAM_CHAT_ID` is not set, you must pass `chatId` to every tool call.
-
-## Tools
-
-### `send_message`
-
-Send a text message to a Telegram chat.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `text` | string | Yes | The message text to send |
-| `chatId` | string | No | Target chat ID (overrides `TELEGRAM_CHAT_ID`) |
-| `parseMode` | string | No | `Markdown`, `MarkdownV2`, or `HTML` |
-| `disableNotification` | boolean | No | Send silently without notification sound |
-
-### `send_document`
-
-Send a file/document to a Telegram chat.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `filePath` | string | Yes | Absolute path to the file |
-| `chatId` | string | No | Target chat ID (overrides `TELEGRAM_CHAT_ID`) |
-| `caption` | string | No | Caption for the document |
-| `parseMode` | string | No | `Markdown`, `MarkdownV2`, or `HTML` |
-| `disableNotification` | boolean | No | Send silently without notification sound |
-
-### `send_photo`
-
-Send a photo/image to a Telegram chat.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `filePath` | string | Yes | Absolute path to the image file |
-| `chatId` | string | No | Target chat ID (overrides `TELEGRAM_CHAT_ID`) |
-| `caption` | string | No | Caption for the photo |
-| `parseMode` | string | No | `Markdown`, `MarkdownV2`, or `HTML` |
-| `disableNotification` | boolean | No | Send silently without notification sound |
-
-### `send_video`
-
-Send a video to a Telegram chat.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `filePath` | string | Yes | Absolute path to the video file |
-| `chatId` | string | No | Target chat ID (overrides `TELEGRAM_CHAT_ID`) |
-| `caption` | string | No | Caption for the video |
-| `parseMode` | string | No | `Markdown`, `MarkdownV2`, or `HTML` |
-| `disableNotification` | boolean | No | Send silently without notification sound |
-
-### `send_audio`
-
-Send an audio file to a Telegram chat.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `filePath` | string | Yes | Absolute path to the audio file |
-| `chatId` | string | No | Target chat ID (overrides `TELEGRAM_CHAT_ID`) |
-| `caption` | string | No | Caption for the audio |
-| `parseMode` | string | No | `Markdown`, `MarkdownV2`, or `HTML` |
-| `disableNotification` | boolean | No | Send silently without notification sound |
-
-### `get_updates`
-
-Check for new messages sent to the bot. Only returns messages received since the last check.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `limit` | number | No | Max messages to retrieve (1-100, default 10) |
-| `timeout` | number | No | Long-polling timeout in seconds (0-30, default 0). Set >0 to wait for new messages. |
-
-#### File Downloads
-
-When a message contains media (photo, document, video, audio, voice message, or sticker), the server automatically downloads the file to `~/.telegram-notifier-mcp/downloads/` and includes the local path in the output. This lets the LLM read or process the file directly.
-
-- Files are saved as `<timestamp>-<original_filename>` to avoid collisions
-- Photos are downloaded at the highest available resolution
-- Telegram Bot API limits downloads to **20 MB**
-- If a download fails, the output falls back to just labeling the media type
-
-## Testing with the MCP Inspector
-
-You can test the server interactively using the [MCP Inspector](https://github.com/modelcontextprotocol/inspector):
-
-```bash
-TELEGRAM_BOT_TOKEN="your-token" TELEGRAM_CHAT_ID="your-chat-id" \
-  npx @modelcontextprotocol/inspector npx telegram-notifier-mcp
-```
-
-This opens a browser UI where you can invoke each tool and see the results.
-
-## Error Handling
-
-The server handles errors gracefully and returns descriptive messages:
-
-| Scenario | Behavior |
+| Файл | Вміст |
 |---|---|
-| Missing `TELEGRAM_BOT_TOKEN` | Server exits at startup with instructions |
-| Missing chat ID (no env var, no parameter) | Returns `isError: true` with message |
-| File not found | Returns `isError: true` with the file path |
-| File exceeds 50 MB | Returns `isError: true` with file size |
-| Telegram API error | Returns `isError: true` with Telegram's error description |
+| `bot-token.xml` | PSCredential із токеном, зашифрованим Windows DPAPI. |
+| `settings.json` | Поле `chatId` — ID приватного чату власника у вигляді рядка. |
 
-All server logs go to **stderr** so they never interfere with the stdio MCP transport on stdout.
+Токен можна зберегти в PowerShell без запису його відкритим текстом у репозиторій:
 
-## File Size Limits
-
-Telegram enforces a **50 MB** limit for file uploads via the Bot API. The server validates file size before uploading and returns an error if the limit is exceeded.
-
-## Development
-
-```bash
-git clone https://github.com/AdeshAtole/telegram-notifier-mcp
-cd telegram-notifier-mcp
-npm install
-npm run build
-
-# Watch mode — rebuilds on file changes
-npm run dev
+```powershell
+$stateDir = Join-Path $env:USERPROFILE '.telegram-notifier-mcp'
+New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+$botToken = Read-Host 'Токен від BotFather' -AsSecureString
+$botCredential = New-Object System.Management.Automation.PSCredential('telegram-bot', $botToken)
+$botCredential | Export-Clixml -LiteralPath (Join-Path $stateDir 'bot-token.xml')
+$ownerChatId = Read-Host 'ID твого приватного чату'
+if ($ownerChatId -notmatch '^[1-9][0-9]*$') { throw 'Потрібен ID приватного чату власника' }
+@{ chatId = $ownerChatId } | ConvertTo-Json | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $stateDir 'settings.json')
 ```
 
-## Publishing
+DPAPI-файл прив’язаний до облікового запису Windows і комп’ютера.
+Приймач потрібно запускати під тим самим обліковим записом.
 
-Releases are published to npm automatically via GitHub Actions when you create a GitHub release.
+### MCP і фоновий приймач
 
-**Setup:**
-1. Add your npm token as a repository secret named `NPM_TOKEN` in GitHub Settings > Secrets and variables > Actions
-2. Bump the version in `package.json`
-3. Create a new GitHub release — the workflow will build and publish to npm
+Зареєструй локальний запускальник у Codex. Для поточної інсталяції:
 
-## License
+```powershell
+codex mcp add telegram-notifier -- D:/Assistant/.tools/node-v24.22.3-win-x64/node.exe D:/Assistant/telegram-notifier-mcp/local/launch.mjs
+```
 
-MIT
+Після додавання MCP відкрий новий сеанс Codex або перезапусти клієнт, щоб він
+завантажив інструменти. Сам MCP не запускає фонове опитування Telegram.
+
+Приймач — `local/reply-router.mjs`; запускальник — `local/run-router.py`.
+У налаштованій інсталяції їх запускає завдання Windows
+`Codex-Telegram-Agent-Replies` через `pythonw.exe` при вході користувача.
+Для ручного запуску після налаштування шляхів можна виконати:
+
+```powershell
+node local/reply-router.mjs
+```
+
+Скопіюй папку `skills/telegram-progress` до своєї папки скілів Codex і адаптуй
+шляхи в інструкціях. Скіл має `allow_implicit_invocation: false`:
+увімкнення відбувається через `$telegram-progress` або явну передачу активації
+від координатора.
+
+## MCP-інструменти
+
+| Інструмент | Призначення |
+|---|---|
+| `send_message` | Текст із необов’язковим форматуванням. |
+| `send_document` | Файл або документ. |
+| `send_photo` | Зображення. |
+| `send_video` | Відео. |
+| `send_audio` | Аудіофайл. |
+| `acknowledge_reply` | Підтвердження стану запиту, зокрема `completed` для 👍. |
+| `get_updates` | Базове ручне читання; вимкнене локальним запускальником, поки inbox належить приймачу. |
+
+На п’яти інструментах надсилання агент передає `agentThreadId`, що дорівнює його
+власному `CODEX_THREAD_ID`. Це зберігає зв’язок між Telegram message ID і тредом;
+одного видимого підпису для маршрутизації недостатньо.
+
+Для 👍 агент викликає `acknowledge_reply` зі своїм `agentThreadId`,
+ID вхідного повідомлення `telegramMessageId` та `stage: "completed"`.
+Сумісний старий стан `started` залишається доступним, але для автоматичної 👀
+він більше не потрібний.
+
+Безпосередній запуск `build/index.js` використовує змінні
+`TELEGRAM_BOT_TOKEN` і `TELEGRAM_CHAT_ID`. Налаштований Windows-запускальник
+`local/launch.mjs` завантажує їх із локальних файлів.
+Команда `npx telegram-notifier-mcp` запускає оригінальний npm-пакет автора,
+а не розширення з цього форку.
+
+## Як це влаштовано
+
+`src/` містить MCP-сервер, прив’язки повідомлень і підтвердження реакцій.
+`local/` містить приймач, команди, клієнт Codex, запускальник і тести.
+`skills/` містить інструкції для агентів.
+
+Приймач використовує встановлений `codex app-server proxy` для команд керування
+чатами та `codex queue --resume` для звичайних Replies. Він не відкриває TCP-порт
+і не запускає другий app server. Модель та дозволи треду не перевизначаються.
+
+## Межі поточної реалізації
+
+- Вхідні запити й команди приймаються лише від власника налаштованого приватного чату.
+- Ноутбук має бути увімкнений, не спати й мати доступ до Telegram та Codex.
+- Повідомлення без збереженої прив’язки не можуть адресувати агента.
+- Вхідні голосові й вкладення без тексту поки не запускають агента.
+- Вихідні повідомлення не мають стійкої черги повторних надсилань.
+- Після неоднозначного тайм-ауту запит не запускається повторно наосліп.
+- Токен, маршрути, журнал, реакції та стан архівації зберігаються поза Git у
+  `%USERPROFILE%/.telegram-notifier-mcp/`.
+
+## Перевірка
+
+```powershell
+npm run build
+npm test
+```
+
+Модульні тести перевіряють маршрутизацію, права власника, дублікати updates,
+реакції та команди чатів. Вони не надсилають повідомлень у Telegram
+і не запускають модельні задачі.
+
+`node local/check.mjs` перевіряє підключення MCP.
+Параметр `--send` додатково надсилає тестове повідомлення в налаштований чат.
+
+## Походження та ліцензія
+
+Базове надсилання повідомлень і медіа походить із
+[AdeshAtole/telegram-notifier-mcp](https://github.com/AdeshAtole/telegram-notifier-mcp).
+Цей форк додає інтеграцію з Codex, керування чатами та інструкції для агентів.
+
+Ліцензія: MIT, як задекларовано в [package.json](package.json).
