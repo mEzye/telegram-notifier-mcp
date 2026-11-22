@@ -1,71 +1,72 @@
 # Telegram Notifier MCP — Codex bridge
 
-Форк [AdeshAtole/telegram-notifier-mcp](https://github.com/AdeshAtole/telegram-notifier-mcp)
-від [mEzye](https://github.com/mEzye): Telegram-бот для спілкування з локальними
-агентами Codex на Windows.
+[mEzye's fork](https://github.com/mEzye/telegram-notifier-mcp) of
+[AdeshAtole/telegram-notifier-mcp](https://github.com/AdeshAtole/telegram-notifier-mcp),
+with a Telegram bridge for local Codex agents on Windows.
 
-Агенти надсилають повідомлення та результати роботи в Telegram. Власник відповідає
-через **Reply**, а приймач передає запит саме тому треду Codex, який надіслав
-оригінальне повідомлення.
+Agents send progress updates and results to Telegram. The owner uses **Reply** on
+an agent's message, and the receiver routes the request to the exact Codex thread
+that sent it.
 
-## Можливості
+## Features
 
-- Текст, посилання, фрагменти коду, документи, фото, відео та аудіофайли.
-- Прив’язка кожного вихідного повідомлення до конкретного агента через `agentThreadId`.
-- Передавання в Codex нового тексту власника разом із повідомленням, на яке він відповів.
-- Робота з кількома основними агентами та субагентами; адресація за ID треду.
-- Один фоновий приймач для всіх агентів, журнал оброблених updates і захист від повторного запуску запиту.
-- Створення та архівація чатів командами Telegram.
-- Реакції зі статусом запиту замість окремих повідомлень про успішне передавання.
-- Завантаження токена з Windows DPAPI та фоновий запуск без консольного вікна.
-- Окремий скіл [telegram-progress](skills/telegram-progress/SKILL.md), який вмикається за викликом.
+- Send text, links, code snippets, documents, photos, video, and audio files.
+- Bind outgoing messages to individual agents with `agentThreadId`.
+- Deliver the owner's new text together with the original quoted message.
+- Support multiple main agents and subagents, addressed by thread ID.
+- Share one background inbox receiver across agents, with update journaling and duplicate-request protection.
+- Create and archive chats using Telegram commands.
+- Show delivery and completion reactions instead of separate forwarding notices.
+- Load credentials through Windows DPAPI and run the receiver without a console window.
+- Enable the [telegram-progress skill](skills/telegram-progress/SKILL.md) explicitly.
 
-## Як користуватися
+## Usage
 
-1. Увімкни `$telegram-progress` у потрібному треді Codex.
-2. Агент надішле повідомлення зі своїм підписом, наприклад `[Реворд]`.
-3. Натисни **«Відповісти»** на цьому повідомленні та напиши запит.
-4. Приймач додасть запит до черги відповідного треду. Зайнятий агент обробить його після поточної роботи.
+1. Invoke `$telegram-progress` in the Codex thread you want to connect.
+2. The agent sends a message with a one-word signature, such as `[Reword]`.
+3. Use **Reply** on that message and enter your request.
+4. The receiver queues the request for that thread. A busy agent handles it after its current work.
 
-Координатор передає активацію скілу новим та вже залученим субагентам. Кожен агент
-використовує власний однослівний підпис і власний `CODEX_THREAD_ID`.
-Незалежні треди вмикають скіл окремо.
+The coordinator passes skill activation to new and existing participating
+subagents. Each agent uses its own signature and its own `CODEX_THREAD_ID`.
+Independent threads enable the skill separately.
 
-### Команди Telegram
+### Telegram commands
 
-| Команда | Результат |
+| Command | Behavior |
 |---|---|
-| `/new` | Новий порожній чат у `D:/Assistant`. |
-| `/new D:/Projects/MyApp` | Новий чат у вказаній існуючій папці. |
-| `/new "D:/My Project"` | Те саме для шляху з пробілами. |
-| `/archive` через Reply | Архівує чат, прив’язаний до вибраного повідомлення агента. |
-| `/archive UUID` | Архівує чат за явно вказаним ID. |
-| `/help` | Показує команди та приклади. |
+| `/new` | Create a blank chat in `D:/Assistant`. |
+| `/new D:/Projects/MyApp` | Create a chat in the specified existing directory. |
+| `/new "D:/My Project"` | Select a directory whose path contains spaces. |
+| `/archive` in Reply | Archive the chat bound to the selected agent message. |
+| `/archive UUID` | Archive the explicitly specified thread. |
+| `/help` | Show commands and examples. |
 
-Після `/new` бот надсилає повідомлення нового чату з папкою та ID. Перше завдання
-надішли через Reply на це повідомлення. Історія попереднього треду не копіюється.
+After `/new`, the bot sends an introduction containing the new chat's directory
+and ID. Reply to that introduction with its first task. History from the previous
+thread is not copied.
 
-Папки не створюються автоматично. Команда `/archive` без Reply або ID попросить
-вказати чат. Архівація зберігає історію; звичайна відповідь на повідомлення
-архівованого через бота чату не відкриває його повторно.
+Directories are not created automatically. Without a Reply target or UUID,
+`/archive` asks you to select a chat. Archiving preserves history; ordinary
+Replies do not reopen chats archived through the bot.
 
-### Реакції
+### Reactions
 
-| Реакція | Значення |
+| Reaction | Meaning |
 |---|---|
-| 👀 | Codex прийняв повідомлення до черги потрібного треду. |
-| 👍 | Агент завершив обробку запиту та підтвердив завершення. |
+| 👀 | Codex accepted the message into the target thread's queue. |
+| 👍 | The receiving agent finished handling the request and acknowledged completion. |
 
-👀 ставить сам приймач після успішного передавання в чергу, без очікування відповіді
-моделі. Це не гарантія, що агент уже працює над запитом.
-👍 ставить агент після завершення. Ці реакції незалежні від звичайних галочок
-«прочитано» в Telegram.
+The receiver sets 👀 immediately after successful queue acceptance, without
+waiting for the model's response. It does not prove the agent is already working.
+The agent sets 👍 after completion. These reactions are separate from Telegram's
+native read checkmarks.
 
-## Вимоги та встановлення
+## Requirements and installation
 
-Поточна інтеграція розрахована на **Windows**. Потрібні Node.js, PowerShell,
-Python із `pythonw.exe` для запускальника та авторизований Codex CLI з локальним
-app server. Перевірена конфігурація використовує Node.js 24 і Python 3.11.
+The current bridge targets **Windows**. It needs Node.js, PowerShell, Python with
+`pythonw.exe` for the supervisor, and an authenticated Codex CLI with a local app
+server. The tested setup uses Node.js 24 and Python 3.11.
 
 ```powershell
 git clone https://github.com/mEzye/telegram-notifier-mcp.git D:/Assistant/telegram-notifier-mcp
@@ -75,130 +76,129 @@ npm run build
 npm test
 ```
 
-Ці команди збирають код. Налаштування бота, MCP і фонового запуску виконується окремо.
-У поточних скриптах зафіксовані шляхи цієї інсталяції; на іншому комп’ютері їх
-потрібно адаптувати. Точні шляхи та завдання Windows описані в
-[local/INSTALLATION.md](local/INSTALLATION.md).
+These commands build the source. Bot credentials, MCP registration, and background
+startup must be configured separately. The current scripts contain paths from the
+installed setup; adapt them for another computer. Exact paths and the Windows task
+are documented in [local/INSTALLATION.md](local/INSTALLATION.md).
 
-### Telegram-бот і локальні налаштування
+### Bot credentials
 
-Створи бота через [@BotFather](https://t.me/BotFather), надішли йому `/start`
-і визнач ID свого приватного чату до запуску фонового приймача.
+Create a bot with [@BotFather](https://t.me/BotFather), send it `/start`, and
+determine your private chat ID before starting the background receiver.
 
-Локальний запускальник читає два файли з `%USERPROFILE%/.telegram-notifier-mcp/`:
+The local launcher reads two files from `%USERPROFILE%/.telegram-notifier-mcp/`:
 
-| Файл | Вміст |
+| File | Contents |
 |---|---|
-| `bot-token.xml` | PSCredential із токеном, зашифрованим Windows DPAPI. |
-| `settings.json` | Поле `chatId` — ID приватного чату власника у вигляді рядка. |
+| `bot-token.xml` | A PSCredential containing the token, encrypted with Windows DPAPI. |
+| `settings.json` | A `chatId` field containing the owner's private chat ID as a string. |
 
-Токен можна зберегти в PowerShell без запису його відкритим текстом у репозиторій:
+Store the token from PowerShell without writing its plaintext into the repository:
 
 ```powershell
 $stateDir = Join-Path $env:USERPROFILE '.telegram-notifier-mcp'
 New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
-$botToken = Read-Host 'Токен від BotFather' -AsSecureString
+$botToken = Read-Host 'BotFather token' -AsSecureString
 $botCredential = New-Object System.Management.Automation.PSCredential('telegram-bot', $botToken)
 $botCredential | Export-Clixml -LiteralPath (Join-Path $stateDir 'bot-token.xml')
-$ownerChatId = Read-Host 'ID твого приватного чату'
-if ($ownerChatId -notmatch '^[1-9][0-9]*$') { throw 'Потрібен ID приватного чату власника' }
+$ownerChatId = Read-Host 'Your private chat ID'
+if ($ownerChatId -notmatch '^[1-9][0-9]*$') { throw 'An owner private chat ID is required' }
 @{ chatId = $ownerChatId } | ConvertTo-Json | Set-Content -Encoding UTF8 -LiteralPath (Join-Path $stateDir 'settings.json')
 ```
 
-DPAPI-файл прив’язаний до облікового запису Windows і комп’ютера.
-Приймач потрібно запускати під тим самим обліковим записом.
+The DPAPI file is tied to the Windows account and computer. Run the receiver under
+that same account.
 
-### MCP і фоновий приймач
+### MCP and background receiver
 
-Зареєструй локальний запускальник у Codex. Для поточної інсталяції:
+Register the local launcher in Codex. For the installed setup:
 
 ```powershell
 codex mcp add telegram-notifier -- D:/Assistant/.tools/node-v24.22.3-win-x64/node.exe D:/Assistant/telegram-notifier-mcp/local/launch.mjs
 ```
 
-Після додавання MCP відкрий новий сеанс Codex або перезапусти клієнт, щоб він
-завантажив інструменти. Сам MCP не запускає фонове опитування Telegram.
+Open a new Codex session or restart the client to load the tools. Registering the
+MCP server alone does not start background Telegram polling.
 
-Приймач — `local/reply-router.mjs`; запускальник — `local/run-router.py`.
-У налаштованій інсталяції їх запускає завдання Windows
-`Codex-Telegram-Agent-Replies` через `pythonw.exe` при вході користувача.
-Для ручного запуску після налаштування шляхів можна виконати:
+The receiver is `local/reply-router.mjs`; its supervisor is `local/run-router.py`.
+In the configured installation, the Windows task `Codex-Telegram-Agent-Replies`
+launches it through `pythonw.exe` at login. After adapting paths and credentials,
+you can also start the receiver manually:
 
 ```powershell
 node local/reply-router.mjs
 ```
 
-Скопіюй папку `skills/telegram-progress` до своєї папки скілів Codex і адаптуй
-шляхи в інструкціях. Скіл має `allow_implicit_invocation: false`:
-увімкнення відбувається через `$telegram-progress` або явну передачу активації
-від координатора.
+Copy `skills/telegram-progress` into your Codex skills directory and adapt the
+instruction paths. Its `allow_implicit_invocation: false` policy requires an
+explicit `$telegram-progress` invocation or an activation handoff from a coordinator.
 
-## MCP-інструменти
+## MCP tools
 
-| Інструмент | Призначення |
+| Tool | Purpose |
 |---|---|
-| `send_message` | Текст із необов’язковим форматуванням. |
-| `send_document` | Файл або документ. |
-| `send_photo` | Зображення. |
-| `send_video` | Відео. |
-| `send_audio` | Аудіофайл. |
-| `acknowledge_reply` | Підтвердження стану запиту, зокрема `completed` для 👍. |
-| `get_updates` | Базове ручне читання; вимкнене локальним запускальником, поки inbox належить приймачу. |
+| `send_message` | Send text with optional formatting. |
+| `send_document` | Send a file or document. |
+| `send_photo` | Send an image. |
+| `send_video` | Send a video file. |
+| `send_audio` | Send an audio file. |
+| `acknowledge_reply` | Acknowledge request state; `completed` sets 👍. |
+| `get_updates` | Base manual polling; disabled by the local launcher while the receiver owns the inbox. |
 
-На п’яти інструментах надсилання агент передає `agentThreadId`, що дорівнює його
-власному `CODEX_THREAD_ID`. Це зберігає зв’язок між Telegram message ID і тредом;
-одного видимого підпису для маршрутизації недостатньо.
+On all five sending tools, an agent supplies `agentThreadId` equal to its own
+`CODEX_THREAD_ID`. This binds the Telegram message ID to the thread; a visible
+signature alone is not sufficient for routing.
 
-Для 👍 агент викликає `acknowledge_reply` зі своїм `agentThreadId`,
-ID вхідного повідомлення `telegramMessageId` та `stage: "completed"`.
-Сумісний старий стан `started` залишається доступним, але для автоматичної 👀
-він більше не потрібний.
+To set 👍, the receiving agent calls `acknowledge_reply` with its
+`agentThreadId`, the incoming `telegramMessageId`, and `stage: "completed"`.
+The legacy `started` stage remains compatible but is no longer needed for
+automatic 👀 reactions.
 
-Безпосередній запуск `build/index.js` використовує змінні
-`TELEGRAM_BOT_TOKEN` і `TELEGRAM_CHAT_ID`. Налаштований Windows-запускальник
-`local/launch.mjs` завантажує їх із локальних файлів.
-Команда `npx telegram-notifier-mcp` запускає оригінальний npm-пакет автора,
-а не розширення з цього форку.
+Running `build/index.js` directly uses `TELEGRAM_BOT_TOKEN` and
+`TELEGRAM_CHAT_ID` environment variables. The configured Windows launcher,
+`local/launch.mjs`, loads them from local files.
+Running `npx telegram-notifier-mcp` uses the original author's npm package,
+not this fork's bridge extensions.
 
-## Як це влаштовано
+## Architecture
 
-`src/` містить MCP-сервер, прив’язки повідомлень і підтвердження реакцій.
-`local/` містить приймач, команди, клієнт Codex, запускальник і тести.
-`skills/` містить інструкції для агентів.
+- `src/`: MCP server, message-to-thread bindings, and reaction receipts.
+- `local/`: receiver, chat commands, Codex client, supervisor, and tests.
+- `skills/`: agent instructions.
 
-Приймач використовує встановлений `codex app-server proxy` для команд керування
-чатами та `codex queue --resume` для звичайних Replies. Він не відкриває TCP-порт
-і не запускає другий app server. Модель та дозволи треду не перевизначаються.
+The receiver uses the installed `codex app-server proxy` for chat lifecycle
+operations and `codex queue --resume` for ordinary Replies. It opens no TCP
+listener and starts no second app server. It does not override the thread's
+model or execution permissions.
 
-## Межі поточної реалізації
+## Current limitations
 
-- Вхідні запити й команди приймаються лише від власника налаштованого приватного чату.
-- Ноутбук має бути увімкнений, не спати й мати доступ до Telegram та Codex.
-- Повідомлення без збереженої прив’язки не можуть адресувати агента.
-- Вхідні голосові й вкладення без тексту поки не запускають агента.
-- Вихідні повідомлення не мають стійкої черги повторних надсилань.
-- Після неоднозначного тайм-ауту запит не запускається повторно наосліп.
-- Токен, маршрути, журнал, реакції та стан архівації зберігаються поза Git у
-  `%USERPROFILE%/.telegram-notifier-mcp/`.
+- Incoming requests and commands are accepted only from the configured private-chat owner.
+- The laptop must be awake, online, and able to reach Telegram and Codex.
+- Messages without a saved thread binding cannot address an agent.
+- Incoming voice messages and attachments without text do not start an agent.
+- Outgoing messages have no durable retry queue.
+- Ambiguous dispatch timeouts are not blindly replayed.
+- The token, routes, journal, reaction receipts, and archive state are stored
+  outside Git in `%USERPROFILE%/.telegram-notifier-mcp/`.
 
-## Перевірка
+## Validation
 
 ```powershell
 npm run build
 npm test
 ```
 
-Модульні тести перевіряють маршрутизацію, права власника, дублікати updates,
-реакції та команди чатів. Вони не надсилають повідомлень у Telegram
-і не запускають модельні задачі.
+Unit tests cover routing, owner validation, duplicate updates, reactions, and chat
+commands. They do not send Telegram messages or start model tasks.
 
-`node local/check.mjs` перевіряє підключення MCP.
-Параметр `--send` додатково надсилає тестове повідомлення в налаштований чат.
+`node local/check.mjs` checks MCP connectivity. Adding `--send` also sends a
+test notification to the configured chat.
 
-## Походження та ліцензія
+## Attribution and license
 
-Базове надсилання повідомлень і медіа походить із
+Base messaging and media support come from
 [AdeshAtole/telegram-notifier-mcp](https://github.com/AdeshAtole/telegram-notifier-mcp).
-Цей форк додає інтеграцію з Codex, керування чатами та інструкції для агентів.
+This fork adds Codex integration, chat lifecycle commands, and agent instructions.
 
-Ліцензія: MIT, як задекларовано в [package.json](package.json).
+License: MIT, as declared in [package.json](package.json).
