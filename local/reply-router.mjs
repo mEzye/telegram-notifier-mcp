@@ -9,7 +9,7 @@ import { handleUpdate } from './reply-handler.mjs';
 import { classifyQueueResult } from './queue-result.mjs';
 import { stateDir, atomicJson, saveRoute, loadRoute } from '../build/reply-routing.js';
 import { replyReceipts, acknowledgeReply } from '../build/reply-receipts.js';
-import {withCodex} from './codex-client.mjs';
+import {withCodex,startTelegramThread} from './codex-client.mjs';
 
 const credentials = loadCredentials();
 await mkdir(join(stateDir, 'reply-journal'), {recursive: true});
@@ -49,16 +49,14 @@ export function dispatch(threadId, prompt) {
 }
 const bot = await api('getMe', {});
 await api('setMyCommands',{scope:{type:'chat',chat_id:Number(credentials.chatId)},commands:[
-  {command:'new',description:'Новий чат. Типова папка D:/Assistant; можна вказати іншу'},
+  {command:'new',description:'Новий чат Full Access. Типова папка D:/Assistant'},
   {command:'archive',description:'Архівувати чат: надішли команду через Reply'},
   {command:'help',description:'Показати команди та приклади'},
 ]}).catch(()=>log('command menu registration failed; text commands remain available'));
 const deps = {
   chatId: credentials.chatId, botId: bot.id, botUsername:bot.username, loadRoute, dispatch,
   createThread: cwd=>withCodex(async client=>{
-    const {thread}=await client.call('thread/start',{cwd,serviceName:'telegram'});
-    // The thread exists before naming; naming failure must not cause a duplicate creation.
-    await client.call('thread/name/set',{threadId:thread.id,name:`${cwd.split('/').filter(Boolean).at(-1)} · Telegram`}).catch(()=>{});
+    const {thread}=await startTelegramThread(client,cwd);
     return {id:thread.id};
   }),
   archiveThread: threadId=>withCodex(client=>client.call('thread/archive',{threadId})),

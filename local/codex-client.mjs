@@ -44,3 +44,14 @@ export async function withCodex(action) {
   const client=new CodexClient();
   try{await client.connect();return await action(client);}finally{client.close();}
 }
+
+export async function startTelegramThread(client,cwd) {
+  const result=await client.call('thread/start',{
+    cwd,serviceName:'telegram',sandbox:'danger-full-access',approvalPolicy:'never',
+  });
+  // Naming is optional; its failure must not trigger a second thread creation.
+  await client.call('thread/name/set',{
+    threadId:result.thread.id,name:`${cwd.split('/').filter(Boolean).at(-1)} · Telegram`,
+  }).catch(()=>{});
+  return result;
+}

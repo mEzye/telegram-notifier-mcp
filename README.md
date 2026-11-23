@@ -35,8 +35,8 @@ Independent threads enable the skill separately.
 
 | Command | Behavior |
 |---|---|
-| `/new` | Create a blank chat in `D:/Assistant`. |
-| `/new D:/Projects/MyApp` | Create a chat in the specified existing directory. |
+| `/new` | Create a blank Full Access chat in `D:/Assistant`. |
+| `/new D:/Projects/MyApp` | Create a Full Access chat in the specified existing directory. |
 | `/new "D:/My Project"` | Select a directory whose path contains spaces. |
 | `/archive` in Reply | Archive the chat bound to the selected agent message. |
 | `/archive UUID` | Archive the explicitly specified thread. |
@@ -45,6 +45,10 @@ Independent threads enable the skill separately.
 After `/new`, the bot sends an introduction containing the new chat's directory
 and ID. Reply to that introduction with its first task. History from the previous
 thread is not copied.
+
+New Telegram-created chats explicitly use `sandbox: "danger-full-access"` and
+`approvalPolicy: "never"`. The introduction shows **Full Access**. These defaults
+apply when creating a new thread; ordinary Replies preserve their target thread's settings.
 
 Directories are not created automatically. Without a Reply target or UUID,
 `/archive` asks you to select a chat. Archiving preserves history; ordinary
@@ -168,8 +172,8 @@ not this fork's bridge extensions.
 
 The receiver uses the installed `codex app-server proxy` for chat lifecycle
 operations and `codex queue --resume` for ordinary Replies. It opens no TCP
-listener and starts no second app server. It does not override the thread's
-model or execution permissions.
+listener and starts no second app server. New threads use the Full Access defaults
+above. The model is inherited; ordinary Replies do not override existing thread permissions.
 
 ## Current limitations
 

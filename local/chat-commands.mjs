@@ -2,7 +2,7 @@ import { win32 } from 'node:path';
 import { stat } from 'node:fs/promises';
 
 export const DEFAULT_CHAT_CWD='D:/Assistant';
-const help='Команди:\n/new — новий чат у D:/Assistant\n/new D:/Projects/MyApp — новий чат у вказаній папці\n/archive — архівувати чат, відповівши на його повідомлення\n/archive UUID — архівувати чат за його ID';
+const help='Команди:\n/new — новий чат Full Access у D:/Assistant\n/new D:/Projects/MyApp — новий чат Full Access у вказаній папці\n/archive — архівувати чат, відповівши на його повідомлення\n/archive UUID — архівувати чат за його ID';
 
 export function parseCommand(text, botUsername) {
   const match=/^\s*\/([a-z_]+)(?:@([a-z0-9_]+))?(?:\s+([\s\S]*))?\s*$/i.exec(text??'');
@@ -46,7 +46,7 @@ export async function handleChatCommand(update, deps, command) {
     let thread;
     try{thread=await deps.createThread(cwd);}catch{await finish('Codex не підтвердив створення нового чату. Автоматично повторювати створення не буду.');return;}
     const alias=chatAlias(cwd,thread.id);
-    await finish(`[${alias}] Новий чат готовий.\nПапка: ${cwd}\nID: ${thread.id}\n\nНапиши завдання через «Відповісти» на це повідомлення.`,{threadId:thread.id,alias});
+    await finish(`[${alias}] Новий чат готовий.\nПапка: ${cwd}\nРежим: Full Access\nID: ${thread.id}\n\nНапиши завдання через «Відповісти» на це повідомлення.`,{threadId:thread.id,alias});
     return;
   }
   if(command.name==='archive'){

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {handleUpdate} from './reply-handler.mjs';
 import {resolveChatCwd,parseCommand} from './chat-commands.mjs';
+import {startTelegramThread} from './codex-client.mjs';
 
 function fixture(text='/new'){
   const journal=new Map(), created=[], archived=[], notices=[], dispatched=[], markers=new Set();
@@ -61,4 +62,15 @@ test('commands addressed to another bot are ignored',async()=>{
 });
 test('a file cannot be selected as cwd',async()=>{
   await assert.rejects(resolveChatCwd('D:/file.txt',async()=>({isDirectory:()=>false})),/не папка/);
+});
+test('new Telegram threads explicitly request Full Access and keep the selected directory',async()=>{
+  const calls=[];
+  const client={call:async(method,params)=>{calls.push({method,params});return method==='thread/start'?{thread:{id:'00000000-0000-4000-8000-000000000001'}}:{};}};
+  await startTelegramThread(client,'D:/My Project');
+  assert.deepEqual(calls[0],{method:'thread/start',params:{cwd:'D:/My Project',serviceName:'telegram',sandbox:'danger-full-access',approvalPolicy:'never'}});
+});
+test('a failed title update never creates the Full Access thread twice',async()=>{
+  let starts=0;
+  const client={call:async method=>{if(method==='thread/start'){starts++;return {thread:{id:'00000000-0000-4000-8000-000000000001'}};}throw new Error('name update failed');}};
+  const result=await startTelegramThread(client,'D:/Assistant');assert.equal(starts,1);assert.ok(result.thread.id);
 });

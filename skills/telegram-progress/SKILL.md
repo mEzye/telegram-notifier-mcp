@@ -54,7 +54,7 @@ If tools are unavailable, report this once in the conversation or to the coordin
 
 ### Telegram chat commands
 
-The receiver handles owner commands before routing ordinary Replies. `/new` creates a blank Codex thread in `D:/Assistant`; `/new D:/Projects/MyApp` selects an existing absolute folder (paths with spaces may be quoted). Its introduction is bound to that new thread, so the owner's next Reply becomes the first task there and activates this skill through the normal handoff. No history from the previous thread is copied.
+The receiver handles owner commands before routing ordinary Replies. `/new` creates a blank Codex thread in `D:/Assistant`; `/new D:/Projects/MyApp` selects an existing absolute folder (paths with spaces may be quoted). New Telegram-created threads use Full Access (`sandbox: "danger-full-access"`, `approvalPolicy: "never"`) as requested by the owner. Its introduction is bound to that new thread, so the owner's next Reply becomes the first task there and activates this skill through the normal handoff. No history from the previous thread is copied.
 
 `/archive` sent as a Reply archives the thread bound to that bot message; `/archive UUID` targets the explicitly supplied thread. Without a target the bot asks the owner to use Reply. The bot does not choose a recent thread implicitly. Ordinary Replies to chats archived through the bot do not reopen them. `/help` lists the commands. Do not reinterpret these commands as instructions to start additional agents yourself; the receiver performs the requested lifecycle operation.
 
